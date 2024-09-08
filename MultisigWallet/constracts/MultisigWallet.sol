@@ -20,12 +20,12 @@ contract MultisigWallet {
     // 从Solidity 0.6.0版本开始，fallback函数已经被弃用，取而代之的是receive函数,
     // 并且从 Solidity 0.8.0 版本开始，如果合约中没有定义 receive() 函数，那么当合约接收到以太币时，将不会执行任何操作，并且发送者将无法取回这些以太币。
     // 因此，为了确保合约能够正确处理接收到的以太币，建议在合约中定义 receive() 函数。
-    receive() public payable{}
+    receive() external payable{}
 
 
     // 构造函数，初始化owners, isOwner, ownerCount, threshold
-    construnctor(
-        address[] memeory _owners,
+    constructor(
+        address[] memory _owners,
         uint256 _threshold
      ){
         _setupOwners(_owners, _threshold);
@@ -34,20 +34,20 @@ contract MultisigWallet {
     /// @dev 初始化owners, isOwner, ownerCount,threshold 
     /// @param _owners: 多签持有人数组
     /// @param _threshold: 多签执行门槛，至少有几个多签人签署了交易
-    function _setupOwners(address[] memory _owners, uint256 memory _threshold ) internal {
+    function _setupOwners(address[] memory _owners, uint256 _threshold ) internal {
         // threshold 没被初始化过，防止重复调用
         require( threshold ==0, "already setup owners" );
         // 多签执行门槛 小于 多签人数
         require( _threshold <= _owners.length, "_threshold is too large");
         // 多签执行门槛至少为1
-        require( _threshold > =1, "invalid _threshold")
+        require( _threshold >= 1, "invalid _threshold");
 
         for ( uint i = 0; i< _owners.length; i++ ) {
             //
-            address owner = _owners[i]
+            address owner = _owners[i];
 
             // 多签人不能是0地址，本合约地址，不能重复
-            require( onwer!= address(0) && owner != address(this)  &&  !isOwner[owner], "invalid owner address" )
+            require( owner!= address(0) && owner != address(this)  &&  !isOwner[owner], "invalid owner address" );
             owners.push(owner);
             isOwner[owner] = true;
         }
@@ -65,7 +65,7 @@ contract MultisigWallet {
         uint256 value,
         bytes memory data,
         bytes memory signatures
-    ) public payable virtual return (bool success) {
+    ) public payable virtual returns (bool success) {
         // 编码交易数据，计算hash-msg
         bytes32 txHash = encodeTransactionData(to,value,data,nonce, block.chainid);
         // 增加nonce
@@ -74,11 +74,11 @@ contract MultisigWallet {
         checkSignatures(txHash, signatures);
 
         // 执行转账交易
-        (success, )= to.call{value: value}(data);
-        require(success, " to.call fail")
+        (success, )= to.call{value : value}(data);
+        require(success, "to.call fail");
 
         //
-        if success{
+        if (success){
             emit ExecutionSuccess(txHash);
         } else{
             emit ExecutionFailure(txHash);
@@ -99,7 +99,7 @@ contract MultisigWallet {
         bytes memory data,
         uint256 _nonce,
         uint256 chainid
-    ) public pure return (bytes32) {
+    ) public pure returns (bytes32) {
         bytes32 safaTxHash =
         keccak256(
             abi.encode(
@@ -126,7 +126,7 @@ contract MultisigWallet {
         // 1. 用ecdsa先验证签名是否有效
         // 2. 检查 currentOwner > lastOwner 确定签名来自不同多签（多签地址递增）
         // 3. 检查 isOwner[currentOwner] 确定签名者多多签持有人
-        address lastOwner = address(0)
+        address lastOwner = address(0);
         address currOwner;
         uint8 v;
         bytes32 r;
@@ -140,6 +140,8 @@ contract MultisigWallet {
             lastOwner = currOwner;
         }
 
+    
+
     }
  
 
@@ -149,7 +151,7 @@ contract MultisigWallet {
     function signatureSplit( bytes memory signatures, uint256 pos )
         internal
         pure
-        return( uint8 v, bytes32 r, bytes32 s ){
+        returns( uint8 v, bytes32 r, bytes32 s ){
         // 签名格式 : {bytes32 r}{bytes32 s}{uint8 v}
         assembly{
             /**
@@ -160,7 +162,7 @@ contract MultisigWallet {
             let signaturePos :=  mul(0x41, pos)
             r := mload( add(signatures, add(signaturePos, 0x20)))
             s := mload( add(signatures, add(signaturePos, 0x40)))
-            v := and(mload( add(signatures, add(signaturePos, 0x41))), oxff)
+            v := and(mload( add(signatures, add(signaturePos, 0x41))), 0xff)
         }
     }
 
